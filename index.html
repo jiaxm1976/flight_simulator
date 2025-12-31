@@ -1,0 +1,1169 @@
+<!--
+==============================================
+项目：Flight Simulator（飞行模拟器）
+开发者：Risen
+文件：index.html
+功能：项目入口文件，3D场景 + 向量（Vector3）基础学习
+创建日期：2025-12-13
+最后修改：2025-12-13（任务4完成）
+==============================================
+-->
+
+<!--
+==============================================
+HTML文档声明与基本结构
+==============================================
+-->
+
+<!--
+    DOCTYPE声明：告诉浏览器这是HTML5文档
+    必须放在文件的第一行
+-->
+<!DOCTYPE html>
+
+<!--
+    <html>标签：HTML文档的根元素
+    所有其他标签都必须在<html>和</html>之间
+-->
+<html>
+
+<!--
+==============================================
+<head>部分：网页的头部信息
+这部分内容不会直接显示在页面上
+==============================================
+-->
+<head>
+    <!--
+        <meta>标签：网页的元信息
+        charset="UTF-8"：字符编码设置为UTF-8
+        作用：支持中文、日文等多语言字符
+    -->
+    <meta charset="UTF-8">
+
+    <!--
+        <meta>标签：视口设置（移动端适配）
+        viewport：视口
+        width=device-width：宽度等于设备宽度
+        initial-scale=1.0：初始缩放比例为1（不缩放）
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!--
+        <title>标签：网页标题
+        显示在浏览器的标签页上
+        不显示在页面内容中
+    -->
+    <title>飞行模拟器 - 任务6：创建飞机模型</title>
+
+    <!--
+        <style>标签：CSS样式代码
+        用于控制页面元素的外观
+    -->
+    <style>
+        /*
+        ==============================================
+        CSS注释的写法：/* 内容 */
+        和HTML注释 <!-- --> 不同
+        ==============================================
+        */
+
+        /*
+            body选择器：选中<body>标签
+            { }：花括号内是样式规则
+        */
+        body {
+            margin: 0;              /* margin：外边距，0表示没有外边距 */
+            padding: 0;             /* padding：内边距，0表示没有内边距 */
+            overflow: hidden;       /* overflow：溢出处理，hidden表示隐藏滚动条 */
+            font-family: Arial, sans-serif;  /* font-family：字体 */
+        }
+
+        /*
+            #renderCanvas：ID选择器
+            #：表示选中id="renderCanvas"的元素
+        */
+        #renderCanvas {
+            width: 100%;            /* width：宽度，100%表示占满父元素的宽度 */
+            height: 100vh;          /* height：高度，100vh表示占满视口高度 */
+                                    /* vh是单位，viewport height（视口高度） */
+                                    /* 100vh = 浏览器窗口的100%高度 */
+            display: block;         /* display：显示方式，block表示块级元素 */
+                                    /* 块级元素会独占一行 */
+        }
+
+        /*
+            信息显示区域的样式（用于调试）
+        */
+        #info {
+            position: absolute;     /* position：定位方式，absolute表示绝对定位 */
+            top: 10px;              /* top：距离顶部10像素 */
+            left: 10px;             /* left：距离左侧10像素 */
+            color: white;           /* color：文字颜色，白色 */
+            font-size: 14px;        /* font-size：字体大小，14像素 */
+            background: rgba(0,0,0,0.5);  /* background：背景色 */
+                                          /* rgba：红绿蓝+透明度 */
+                                          /* (0,0,0,0.5)：黑色，50%透明 */
+            padding: 10px;          /* padding：内边距10像素 */
+            border-radius: 5px;     /* border-radius：圆角半径5像素 */
+        }
+    </style>
+
+    <!--
+        <script>标签：引入外部JavaScript库
+        src="..."：从这个网址加载Babylon.js库
+        CDN：Content Delivery Network，内容分发网络
+        作用：从互联网加载Babylon.js，无需手动下载
+    -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+</head>
+
+<!--
+==============================================
+<body>部分：网页的主体内容
+这部分会显示在浏览器窗口中
+==============================================
+-->
+<body>
+    <!--
+        <canvas>标签：画布元素
+        Babylon.js会在这个画布上绘制3D图形
+        id="renderCanvas"：给元素一个唯一的ID
+        作用：JavaScript可以通过这个ID找到这个元素
+    -->
+    <canvas id="renderCanvas"></canvas>
+
+    <!--
+        <div>标签：容器标签，用于组织内容
+        id="info"：ID为info，对应上面CSS中的#info样式
+        作用：显示调试信息
+    -->
+    <div id="info">
+        飞行模拟器 - 任务6：创建高质量A350飞机（方案D）<br>
+        开发者：Risen<br>
+        <span id="planeInfo">飞机信息加载中...</span><br>
+        <!-- <span>标签：行内元素，用于包裹一段文本 -->
+        <!-- id="planeInfo"：显示飞机相关信息 -->
+        鼠标拖动：旋转视角<br>
+        滚轮：缩放
+    </div>
+
+    <!--
+        第二个<script>标签：我们自己写的JavaScript代码
+        这里不用src属性，直接在标签内写代码
+        建议放在</body>之前，确保页面元素已加载
+    -->
+    <script>
+        // ====================================================================
+        // JavaScript注释的写法：
+        // 单行注释：// 内容
+        // 多行注释：/* 内容 */
+        // ====================================================================
+
+        // ====================================================================
+        // 第1步：获取canvas元素
+        // ====================================================================
+
+        // const：关键字，声明一个常量（constant）
+        //        常量：值不会改变的变量
+        // canvas：变量名，我们给它起的名字（可以自定义）
+        // =：赋值运算符，把右边的值赋给左边的变量
+        // document：内置对象，代表整个HTML文档
+        // .：点号，用于访问对象的属性或方法
+        // getElementById：方法，通过ID查找元素
+        //                 get = 获取，Element = 元素，ById = 通过ID
+        // ("renderCanvas")：参数，要查找的ID名称
+        //                   必须用引号括起来（字符串）
+        //                   必须和HTML中的id="renderCanvas"一致
+        // ;：分号，JavaScript语句的结束符（可选，但建议加上）
+        const canvas = document.getElementById("renderCanvas");
+
+        // 验证是否成功获取
+        // console.log：在浏览器控制台输出信息
+        // 按F12打开浏览器控制台可以看到
+        console.log("Canvas元素:", canvas);
+
+        // ====================================================================
+        // 第2步：创建Babylon.js渲染引擎
+        // ====================================================================
+
+        // new：关键字，创建一个新对象（实例化）
+        // BABYLON：Babylon.js库的命名空间
+        //          所有Babylon.js的功能都在BABYLON对象下
+        // Engine：引擎类（Class），负责渲染3D图形
+        // 参数说明：
+        //   第1个参数：canvas - 要渲染到哪个画布
+        //   第2个参数：true - 是否启用抗锯齿（antialiasing）
+        //              true = 启用，图像更平滑但性能稍差
+        //              false = 不启用，性能更好但可能有锯齿
+        const engine = new BABYLON.Engine(canvas, true);
+
+        console.log("引擎创建成功:", engine);
+
+        // ====================================================================
+        // 第3步：创建场景
+        // ====================================================================
+
+        // 为什么要用函数？
+        // 把创建场景的代码封装在函数里，代码更清晰
+        // 以后可以重复调用这个函数
+
+        // function：关键字，声明一个函数
+        // createScene：函数名，我们给它起的名字
+        // ()：参数列表，这个函数没有参数，所以是空的
+        // { }：花括号，函数体，里面是函数要执行的代码
+        const createScene = function() {
+
+            // ================================================================
+            // 3.1 创建场景对象
+            // ================================================================
+
+            // Scene：场景类，是所有3D物体的容器
+            //        想象成一个虚拟的3D空间
+            // (engine)：参数，把引擎传给场景
+            //           场景需要知道用哪个引擎来渲染
+            const scene = new BABYLON.Scene(engine);
+
+            console.log("场景创建成功:", scene);
+
+            // ================================================================
+            // 3.2 设置场景背景色
+            // ================================================================
+
+            // clearColor：场景的背景颜色属性
+            // Color3：颜色类，表示RGB颜色
+            //         R = Red（红色）
+            //         G = Green（绿色）
+            //         B = Blue（蓝色）
+            // (0.5, 0.7, 1.0)：RGB值
+            //   取值范围：0-1（不是0-255！）
+            //   0 = 没有这个颜色分量
+            //   1 = 这个颜色分量最大
+            //   计算方法：如果你有0-255的值，除以255即可
+            //   例如：RGB(128, 179, 255) -> (128/255, 179/255, 255/255)
+            //
+            // 当前值分析：
+            //   0.5：红色分量 50%
+            //   0.7：绿色分量 70%
+            //   1.0：蓝色分量 100%
+            //   混合结果：淡蓝色（天空的颜色）
+            scene.clearColor = new BABYLON.Color3(0.5, 0.7, 1.0);
+
+            // ================================================================
+            // 3.3 创建相机（观察视角）
+            // ================================================================
+
+            // 为什么需要相机？
+            // 3D世界需要一个"观察点"，就像你的眼睛
+            // 没有相机，即使创建了物体，也看不到
+
+            // ArcRotateCamera：弧形旋转相机
+            //                  可以围绕目标点旋转，适合查看物体
+            //                  Arc = 弧形，Rotate = 旋转
+            //
+            // 参数详解：
+            const camera = new BABYLON.ArcRotateCamera(
+                "camera",                   // 第1个参数：相机的名称（字符串）
+                                            //   名称可以随便起，用于识别这个相机
+
+                0,                          // 第2个参数：Alpha角（水平旋转角度）
+                                            //   单位：弧度（radians）
+                                            //   0 = 从正前方看
+                                            //   Math.PI/2 = 从右侧看
+                                            //   Math.PI = 从正后方看
+
+                Math.PI / 3,                // 第3个参数：Beta角（垂直旋转角度）
+                                            //   单位：弧度
+                                            //   Math.PI = 圆周率π ≈ 3.14159
+                                            //   π/3 ≈ 1.047 弧度 ≈ 60度
+                                            //   0 = 从正上方俯视
+                                            //   π/2 = 水平观看
+                                            //   π = 从正下方仰视
+
+                10,                         // 第4个参数：Radius（半径）
+                                            //   相机距离目标点的距离
+                                            //   单位：场景单位（可以理解为米）
+                                            //   10 = 距离目标点10个单位
+
+                BABYLON.Vector3.Zero(),     // 第5个参数：相机看向的目标点
+                                            //   Vector3：三维向量（x, y, z）
+                                            //   Zero()：返回(0, 0, 0)
+                                            //   (0, 0, 0)是3D空间的原点
+
+                scene                       // 第6个参数：所属的场景对象
+            );
+
+            // 让相机响应用户操作
+            // attachControl：附加控制
+            //   attach = 附加，Control = 控制
+            // 参数：
+            //   第1个：canvas - 监听哪个画布上的鼠标事件
+            //   第2个：true - 是否阻止浏览器默认行为
+            //          true = 阻止（例如右键菜单不会弹出）
+            camera.attachControl(canvas, true);
+
+            console.log("相机创建成功:", camera);
+
+            // ================================================================
+            // 3.4 创建光源（照亮物体）
+            // ================================================================
+
+            // 为什么需要光源？
+            // 3D物体需要光照才能看见
+            // 就像现实世界，没有光就是一片黑暗
+
+            // HemisphericLight：半球光
+            //   Hemispheric = 半球的
+            //   模拟天空的环境光，柔和自然
+            //
+            // 参数详解：
+            const light = new BABYLON.HemisphericLight(
+                "light",                        // 第1个参数：光源名称
+
+                new BABYLON.Vector3(0, 1, 0),   // 第2个参数：光的方向
+                                                 //   Vector3(x, y, z)
+                                                 //   (0, 1, 0)表示Y轴正方向
+                                                 //   即从上往下照射
+                                                 //
+                                                 //   3D坐标系：
+                                                 //   X轴：左右（负=左，正=右）
+                                                 //   Y轴：上下（负=下，正=上）
+                                                 //   Z轴：前后（负=后，正=前）
+
+                scene                           // 第3个参数：所属场景
+            );
+
+            // 可选：调整光照强度
+            // intensity：强度
+            //   范围：0-1（0=无光，1=最亮）
+            //   默认值：1
+            // light.intensity = 0.7;  // 70%亮度
+
+            console.log("光源创建成功:", light);
+
+            // ================================================================
+            // 3.5 （已删除立方体 - 任务4演示物体）
+            // ================================================================
+
+            console.log("立方体已删除，清除干扰");
+
+            // ================================================================
+            // 3.6 创建地面
+            // ================================================================
+
+            // CreateGround：创建地面方法
+            //   Ground = 地面
+            //
+            // 参数详解：
+            const ground = BABYLON.MeshBuilder.CreateGround(
+                "ground",                   // 第1个参数：地面的名称
+
+                {                           // 第2个参数：选项对象
+                    width: 100,             //   width：宽度（X轴方向）
+                                            //   100个单位，很大的地面
+
+                    height: 100             //   height：深度（Z轴方向）
+                                            //   注意：这里的height实际是Z轴的长度
+                                            //   有点反直觉，但Babylon.js就是这样设计的
+                                            //   100个单位，很大的地面
+                },
+
+                scene                       // 第3个参数：所属场景
+            );
+
+            // ----------------------------------------------------------------
+            // 设置地面的材质（Material）
+            // 材质决定物体的外观（颜色、纹理等）
+            // ----------------------------------------------------------------
+
+            // 创建标准材质
+            // StandardMaterial：标准材质类
+            //   Standard = 标准的，Material = 材质
+            const groundMaterial = new BABYLON.StandardMaterial("groundMat", scene);
+            //   第1个参数：材质名称
+            //   第2个参数：所属场景
+
+            // 设置材质的漫反射颜色（diffuseColor）
+            // diffuse = 漫反射，物体表面的主要颜色
+            // 这里设置为绿色（草地的颜色）
+            groundMaterial.diffuseColor = new BABYLON.Color3(0.2, 0.6, 0.2);
+            //   (0.2, 0.6, 0.2) = 暗绿色
+            //   R=0.2（20%红色）
+            //   G=0.6（60%绿色）
+            //   B=0.2（20%蓝色）
+            //   混合结果：草地的绿色
+
+            // 把材质应用到地面
+            // material：网格的材质属性
+            ground.material = groundMaterial;
+
+            console.log("地面创建成功:", ground);
+
+            // ================================================================
+            // 3.7 创建天空盒（Skybox）
+            // ================================================================
+
+            // 什么是天空盒？
+            // 一个巨大的立方体，把整个场景包裹起来
+            // 在立方体内部贴上天空的图片
+            // 从里面看，就像真实的天空
+            //
+            // 现在我们用纯色代替图片，创建简单的天空
+
+            // 创建天空盒网格
+            const skybox = BABYLON.MeshBuilder.CreateBox(
+                "skyBox",                   // 名称
+                { size: 1000 },             // 尺寸：1000个单位，非常大
+                                            // 要比场景中的所有物体都大
+                                            // 确保把整个场景包裹起来
+                scene
+            );
+
+            // 创建天空盒材质
+            const skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
+
+            // 设置材质为背面渲染
+            // backFaceCulling：背面剔除
+            //   默认情况下，3D物体只渲染正面，背面不渲染（优化性能）
+            //   Culling = 剔除，BackFace = 背面
+            //   false = 不剔除背面
+            //   为什么要这样？因为我们在立方体内部，需要看到内壁
+            skyboxMaterial.backFaceCulling = false;
+
+            // 设置材质颜色
+            // 使用emissiveColor（自发光颜色）而不是diffuseColor
+            // emissive = 发光的，自己会发光
+            // 为什么用自发光？因为天空盒不需要受光照影响，自己会发光
+            skyboxMaterial.emissiveColor = new BABYLON.Color3(0.5, 0.7, 1.0);
+            //   淡蓝色，和背景色一致
+
+            // 禁用光照影响
+            // disableLighting：禁用光照
+            //   disable = 禁用，Lighting = 光照
+            //   true = 天空盒不受场景光源影响
+            //   这样天空盒始终保持亮度，不会因为光源改变而变暗
+            skyboxMaterial.disableLighting = true;
+
+            // 应用材质
+            skybox.material = skyboxMaterial;
+
+            console.log("天空盒创建成功:", skybox);
+
+            // ================================================================
+            // 3.8 任务4新增：（已删除向量演示球体 - 清除干扰）
+            // ================================================================
+
+            console.log("向量演示球体已删除，清除干扰");
+
+            // ================================================================
+            // 3.9 任务5：旋转演示（欧拉角和四元数）
+            // ================================================================
+
+            // 什么是旋转？
+            // 旋转是物体绕某个轴转动的动作
+            // 在3D空间中，有三个旋转轴：X、Y、Z
+            // 对应三个旋转角度：Pitch（俯仰）、Yaw（偏航）、Roll（滚转）
+
+            // ================================================================
+            // 3.9.1 欧拉角（Euler Angles）基础概念
+            // ================================================================
+
+            // 欧拉角：用三个角度表示3D旋转
+            // 三个角度分别是：
+            //   1. Pitch（俯仰角）：绕X轴旋转（飞机抬头/低头）
+            //   2. Yaw（偏航角）：绕Y轴旋转（飞机左转/右转）
+            //   3. Roll（滚转角）：绕Z轴旋转（飞机左倾/右倾）
+
+            // 在Babylon.js中，使用Vector3表示欧拉角：
+            // mesh.rotation = new BABYLON.Vector3(pitch, yaw, roll);
+            //   单位：弧度（radians）
+            //   2π弧度 = 360度
+            //   π弧度 = 180度
+
+            // ================================================================
+            // 3.9.2 旋转演示球体（已删除 - 清除干扰）
+            // ================================================================
+
+            console.log("旋转演示球体已删除，清除干扰");
+
+            // ================================================================
+            // 3.9.3 旋转演示立方体（已删除 - 清除干扰）
+            // ================================================================
+
+            console.log("旋转演示立方体已删除，清除干扰");
+
+            // ================================================================
+            // 3.9.4 四元数（Quaternion）高级概念
+            // ================================================================
+
+            // 为什么需要四元数？
+            // =====================================================
+            // 欧拉角看起来很直观，但有一个致命缺陷：万向锁（Gimbal Lock）
+            //
+            // 什么是万向锁？
+            // 当Pitch旋转到90度时，Yaw和Roll会产生相同的效果
+            // 此时失去一个旋转自由度，导致旋转不流畅
+            //
+            // 例如：飞机做侧翻动作时，可能会出现抖动或怪异的行为
+
+            // 四元数的优点：
+            // 1. 避免万向锁
+            // 2. 旋转插值更平滑
+            // 3. 旋转合成更高效
+            // 4. 计算精度更高
+
+            // 四元数的表示：
+            // 四元数 = (x, y, z, w)
+            // 其中w是标量部分，xyz是向量部分
+            // 比欧拉角多了一个值，但用处更大
+
+            // 在Babylon.js中使用四元数：
+            // mesh.rotationQuaternion = BABYLON.Quaternion.FromEulers(pitch, yaw, roll);
+            //   FromEulers：从欧拉角转换为四元数
+
+            // 为什么不一开始就用四元数？
+            // - 欧拉角更直观，易于理解
+            // - 四元数概念复杂，初学者可能混淆
+            // - 对于简单的旋转，两者都可以用
+            // - 对于复杂旋转和插值，四元数是必需的
+
+            // ================================================================
+            // 重要提示：rotation vs rotationQuaternion
+            // ================================================================
+
+            // Babylon.js中两种旋转方式：
+            // 1. rotation：使用欧拉角（简单直观）
+            // 2. rotationQuaternion：使用四元数（复杂但强大）
+            //
+            // 关键：两种方式不能混用！
+            // 如果使用rotationQuaternion，就不要用rotation
+            // 否则会出现奇怪的行为
+
+            // 对于这个任务，我们使用rotation（欧拉角）即可
+            // 因为演示的是基础旋转概念
+
+            console.log("四元数知识讲解完毕");
+
+            // ================================================================
+            // 3.10 任务6（方案D）：创建高质量空客A350飞机模型
+            // ================================================================
+
+            // 方案D架构说明：
+            // planeController (TransformNode) - 总控制器，负责整体旋转
+            //   └─ fuselage (Cylinder) - 机身，不旋转，标准Y-up坐标系
+            //        └─ 18个子部件（驾驶舱、机翼、发动机、尾翼、起落架等）
+
+            // ================================================================
+            // 3.10.1 创建材质
+            // ================================================================
+
+            // 主材质：银灰色（机身、机翼、尾翼）
+            const planeMaterial = new BABYLON.StandardMaterial("planeMat", scene);
+            planeMaterial.diffuseColor = new BABYLON.Color3(0.85, 0.88, 0.92);  // 银灰色
+            planeMaterial.emissiveColor = new BABYLON.Color3(0.12, 0.12, 0.15);  // 微弱自发光
+            planeMaterial.specularColor = new BABYLON.Color3(0.6, 0.6, 0.6);     // 金属高光
+            planeMaterial.specularPower = 32;  // 高光强度
+
+            // 发动机材质：深灰色（发动机外壳、挂架、起落架）
+            const engineMaterial = new BABYLON.StandardMaterial("engineMat", scene);
+            engineMaterial.diffuseColor = new BABYLON.Color3(0.25, 0.27, 0.30);  // 深灰色
+            engineMaterial.emissiveColor = new BABYLON.Color3(0.03, 0.03, 0.05);
+            engineMaterial.specularColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+            engineMaterial.specularPower = 16;
+
+            console.log("飞机材质创建成功");
+
+            // ================================================================
+            // 3.10.2 创建planeController（TransformNode）
+            // ================================================================
+
+            // TransformNode：变换节点，不是Mesh
+            // 用于组织和控制子对象，本身不渲染
+            const planeController = new BABYLON.TransformNode("planeController", scene);
+            planeController.position = new BABYLON.Vector3(0, 3, 0);  // 在地面上方3个单位
+            planeController.rotation = new BABYLON.Vector3(0, 0, 0);  // 不旋转，使用标准Y-up坐标系
+            console.log("planeController 创建完成");
+
+            // ================================================================
+            // 3.10.3 创建fuselage（机身）- 平行于Y轴（竖直方向）
+            // ================================================================
+            // 当前设计：
+            // - fuselage的height（6.7）沿Y轴竖直（上下）
+            // - fuselage的diameter（0.6）在X-Z平面（左右、前后）
+            // - 这样机身就竖立了，使用标准Y-up坐标系
+            const fuselage = BABYLON.MeshBuilder.CreateCylinder(
+                "fuselage",
+                {
+                    height: 6.7,         // 长度6.7单位
+                    diameter: 0.6,       // 直径0.6单位
+                    tessellation: 32,    // 光滑的圆形
+                    diameterTop: 0.55,   // 顶部稍细
+                    diameterBottom: 0.6  // 底部标准
+                },
+                scene
+            );
+
+            fuselage.parent = planeController;
+            fuselage.position = new BABYLON.Vector3(0, 0, 0);
+            fuselage.rotation = new BABYLON.Vector3(Math.PI / 2, 0, 0);  // 绕X轴旋转π/2，使机身水平
+            fuselage.material = planeMaterial;
+
+            console.log("=== 开始创建最小化A350飞机模型（标准Y-up坐标系） ===");
+            console.log("fuselage: height=6.7, diameter=0.6");
+            console.log("机身方向：沿Y轴竖直（标准Y-up坐标系）");
+            console.log("备注：planeController旋转-π/2，在屏幕上飞机仍显示为水平");
+
+            // ================================================================
+            // 3.10.4 创建左右机翼（最小化版本）
+            // ================================================================
+
+            const wingLeft = BABYLON.MeshBuilder.CreateBox(
+                "wingLeft",
+                { width: 3.0, height: 0.1, depth: 1.0 },
+                scene
+            );
+            wingLeft.parent = planeController;  // 改为planeController的直接子对象，独立不受fuselage影响
+            wingLeft.position = new BABYLON.Vector3(-1.5, 0.0, 0.0);  // 坐标不变
+            wingLeft.rotation = new BABYLON.Vector3(0, 0, 0);  // 不旋转
+            wingLeft.material = planeMaterial;
+            wingLeft.showBoundingBox = true;
+            console.log("wingLeft 创建完成:");
+            console.log("  位置:", wingLeft.position);
+            console.log("  尺寸: width=3.0, height=0.1, depth=1.0");
+            console.log("  旋转: X轴 逆时针90°（机翼竖直）");
+
+            const wingRight = wingLeft.clone("wingRight");
+            wingRight.position.x = 1.5;
+            wingRight.parent = planeController;  // 改为planeController的直接子对象，独立不受fuselage影响
+            wingRight.showBoundingBox = true;
+            console.log("wingRight 创建完成（镜像）");
+
+            // ================================================================
+            // 3.10.5 创建左右发动机（最小化版本 - 只有外壳）
+            // ================================================================
+
+            const engineNacelleLeft = BABYLON.MeshBuilder.CreateCylinder(
+                "engineNacelleLeft",
+                { height: 1.0, diameter: 0.3, tessellation: 16 },
+                scene
+            );
+            engineNacelleLeft.parent = planeController;  // 改为planeController的直接子对象，独立不受fuselage影响
+            engineNacelleLeft.position = new BABYLON.Vector3(-1.0, -0.2, -0.3);  // 新坐标
+            engineNacelleLeft.rotation = new BABYLON.Vector3(Math.PI / 2, 0, 0);  // 旋转使其竖直
+            engineNacelleLeft.material = planeMaterial;
+            engineNacelleLeft.showBoundingBox = true;
+            console.log("engineNacelleLeft 创建完成:");
+            console.log("  位置:", engineNacelleLeft.position);
+            console.log("  大小: diameter=0.3, height=1.0");
+            console.log("  旋转: 无（竖直，沿Y轴，和机身平行）");
+            console.log("  备注: z-0.1 (从0.3到0.2)");
+
+            const engineNacelleRight = engineNacelleLeft.clone("engineNacelleRight");
+            engineNacelleRight.position.x = 1.0;
+            engineNacelleRight.parent = planeController;  // 改为planeController的直接子对象，独立不受fuselage影响
+            engineNacelleRight.showBoundingBox = true;
+            console.log("engineNacelleRight 创建完成（镜像）");
+
+            // ================================================================
+            // 3.10.6 创建垂直尾翼（最小化版本）
+            // ================================================================
+
+            const tailVertical = BABYLON.MeshBuilder.CreateBox(
+                "tailVertical",
+                { width: 0.12, height: 1.2, depth: 0.8 },
+                scene
+            );
+            tailVertical.parent = planeController;  // 改为planeController的直接子对象，独立不受fuselage影响
+            tailVertical.position = new BABYLON.Vector3(0.0, 0.7, 2.5);  // 新坐标
+            tailVertical.material = planeMaterial;
+            tailVertical.showBoundingBox = true;
+            console.log("tailVertical 创建完成:");
+            console.log("  位置:", tailVertical.position);
+            console.log("  尺寸: width=0.12, height=1.2, depth=0.8");
+            console.log("  备注: z=-0.6");
+
+            // ================================================================
+            // 3.10.6.5 创建尾锥（使尾部更圆润）
+            // ================================================================
+
+            // 创建尾锥（83层圆柱体，超密集无缝）
+            const fuselageDiameter = 0.6;  // 机身直径
+            const tailConeLayerCount = 83;  // 层数：53层 + 新增30层（更加光滑）
+            const tailTotalLength = 0.60;   // 总长度：从3.5到4.1（保持不变）
+
+            // 计算基础高度：使所有层高度之和 = 总长度
+            // 高度数列：h₀ + h₁ + ... + h₈₂ = heightMax * (83+82+...+1)/83
+            // 通用公式：sum = heightMax * (n+1)/2
+            // 因此：heightMax = totalLength * 2 / (n+1)
+            // 对于n=83：heightMax = 0.60 * 2 / 84 = 0.01429
+            const heightMax = tailTotalLength * 2 / (tailConeLayerCount + 1);
+
+            const tailCones = [];
+            let zCurrent = 3.35;  // z轴当前位置（与机身末尾接上）
+
+            for (let i = 0; i < tailConeLayerCount; i++) {
+                // 直径逐渐减小（从0.55逐渐减到接近0）
+                // 第一层直径0.55（比机身直径0.6略小）
+                const tailFirstDiameter = 0.55;  // 尾锥第一层直径
+                const diameter = tailFirstDiameter * (tailConeLayerCount - i) / tailConeLayerCount;
+
+                // 高度逐渐减小（从heightMax到接近0）
+                // 每层高度 = 该层在Z轴上占用的实际空间
+                const height = heightMax * (tailConeLayerCount - i) / tailConeLayerCount;
+
+                // z坐标：累加方式，使每层紧密相连，无缝贴在一起
+                // 当前层的z = 前面所有层的累加位置
+                const z = zCurrent;
+                zCurrent += height;  // 下一层的起点 = 当前层起点 + 当前层高度
+
+                // y坐标计算：尾锥最高点与机身最高点对齐
+                // 机身最高点 = 3.35，尾锥现在 = 3.30
+                // 需要向上调整 0.05
+                // 第一层（diameter=0.55）中心 = y
+                // 要让尾锥最低点与机身最低点（Y=2.65）对齐
+                // 机身最低点世界坐标 = 2.65（含planeController偏移）
+                // 第一层最低点 = y - 0.275，最后一层最低点 = y
+                // 调整offset使得尾锥底部与机身对齐，向下2.73
+                const y = -diameter / 2 - 2.73;
+
+                const cone = BABYLON.MeshBuilder.CreateCylinder(
+                    `tailCone${i}`,
+                    { height: height, diameter: diameter, tessellation: 32 },
+                    scene
+                );
+                cone.parent = planeController;
+                cone.position = new BABYLON.Vector3(0, y, z);
+                cone.rotation = new BABYLON.Vector3(Math.PI / 2, 0, 0);
+                cone.material = planeMaterial;
+                // cone.showBoundingBox = false;  // 关闭边框显示，保持清爽
+                tailCones.push(cone);
+            }
+
+            // ================================================================
+            // 合并83层为一个整体
+            // ================================================================
+
+            // 将所有83层合并成一个单一的网格
+            // MergeMeshes：合并网格方法
+            // 参数1：tailCones - 要合并的网格数组
+            // 参数2：true - 删除原来的单个网格
+            // 参数3：true - 合并后优化网格
+            const tailConeMerged = BABYLON.Mesh.MergeMeshes(tailCones, true, true);
+
+            // 设置合并后网格的属性
+            tailConeMerged.name = "tailConeMerged";  // 整体尾锥
+            tailConeMerged.parent = planeController;  // 保持parenting
+            tailConeMerged.material = planeMaterial;  // 应用材质
+            tailConeMerged.showBoundingBox = true;  // 显示边框
+            // 重要：在X轴上再逆时针旋转180度
+            // 原旋转：π（180°），再加π = 2π（360°，完整旋转）
+            tailConeMerged.rotation = new BABYLON.Vector3(2 * Math.PI, 0, 0);
+
+            console.log("83层合并完成！");
+            console.log("  原来：83个独立的圆柱体网格");
+            console.log("  现在：1个合并的整体网格 ✅");
+            console.log("  优势：");
+            console.log("    - 渲染性能提升（减少draw call）");
+            console.log("    - 可以当作整体旋转、移动、删除");
+            console.log("    - 内存使用更高效");
+            console.log("  旋转调整：");
+            console.log("    - 机身旋转：π/2(X轴 = 90°)");
+            console.log("    - 尾锥旋转：π(X轴 = 180°) ✅ 逆时针再转90°");
+            console.log("    - 尾部方向：已翻转");
+            console.log("    - 最高点对齐：Y = 3.35 ✅");
+
+            console.log("tailCone 创建完成（83层极致光滑，已合并）:");
+            console.log("  网格状态：1个（tailConeMerged）✅");
+            console.log("  总层数：83层（建模用，已合并）");
+            console.log("  高度最大值（第一层）：" + heightMax.toFixed(5) + "（确保无缝）");
+            console.log("  高度范围：" + heightMax.toFixed(5) + " → 0（逐渐减小）");
+            console.log("  直径范围：0.6（机身直径）→ 0（逐渐减小）");
+            console.log("  第一层直径：0.6（与机身直径完全相同）");
+            console.log("  z轴范围：3.5 → 4.1（总长度0.6，保持不变）");
+            console.log("  每层边数：32（每个圆形有32边，合并后保留）");
+            console.log("  平均层间距：" + (tailTotalLength / tailConeLayerCount).toFixed(5) + "（极其细密）");
+            console.log("  APU预留空间：z = 4.1 → 4.35（约0.25单位）");
+            console.log("  最高点：所有层都在 y = 0.3（与机身最高点接齐）");
+            console.log("  效果：极致光滑圆锥体 + 整体合并 = 完美尾部 ✅");
+            // ================================================================
+            // 3.10.7 调试辅助：显示坐标轴
+            // ================================================================
+
+            const axes = new BABYLON.AxesViewer(scene, 3);
+            console.log("坐标轴已显示（红=X, 绿=Y, 蓝=Z）");
+
+            // 创建XYZ轴标签（在轴末端显示文字，改为红色）
+            // ================================================================
+
+            // X轴标签（红色）
+            const xLabelTexture = new BABYLON.DynamicTexture("xLabel", 512, scene);
+            const xLabelCtx = xLabelTexture.getContext("2d");
+            xLabelCtx.fillStyle = "red";
+            xLabelCtx.font = "bold 150px Arial";
+            xLabelCtx.fillText("X", 160, 300);
+            xLabelTexture.update();
+
+            const xLabelMat = new BABYLON.StandardMaterial("xLabelMat", scene);
+            xLabelMat.emissiveTexture = xLabelTexture;
+            xLabelMat.backFaceCulling = false;
+
+            const xLabel = BABYLON.MeshBuilder.CreatePlane("xLabel", { size: 1.0 }, scene);
+            xLabel.position = new BABYLON.Vector3(4.5, 5, 0);
+            xLabel.rotation.y = 0;
+            xLabel.material = xLabelMat;
+
+            // Y轴标签（红色）
+            const yLabelTexture = new BABYLON.DynamicTexture("yLabel", 512, scene);
+            const yLabelCtx = yLabelTexture.getContext("2d");
+            yLabelCtx.fillStyle = "red";
+            yLabelCtx.font = "bold 150px Arial";
+            yLabelCtx.fillText("Y", 160, 300);
+            yLabelTexture.update();
+
+            const yLabelMat = new BABYLON.StandardMaterial("yLabelMat", scene);
+            yLabelMat.emissiveTexture = yLabelTexture;
+            yLabelMat.backFaceCulling = false;
+
+            const yLabel = BABYLON.MeshBuilder.CreatePlane("yLabel", { size: 1.0 }, scene);
+            yLabel.position = new BABYLON.Vector3(0, 5, 0);
+            yLabel.material = yLabelMat;
+
+            // Z轴标签（红色）
+            const zLabelTexture = new BABYLON.DynamicTexture("zLabel", 512, scene);
+            const zLabelCtx = zLabelTexture.getContext("2d");
+            zLabelCtx.fillStyle = "red";
+            zLabelCtx.font = "bold 150px Arial";
+            zLabelCtx.fillText("Z", 160, 300);
+            zLabelTexture.update();
+
+            const zLabelMat = new BABYLON.StandardMaterial("zLabelMat", scene);
+            zLabelMat.emissiveTexture = zLabelTexture;
+            zLabelMat.backFaceCulling = false;
+
+            const zLabel = BABYLON.MeshBuilder.CreatePlane("zLabel", { size: 1.0 }, scene);
+            zLabel.position = new BABYLON.Vector3(0, 5, 4.5);
+            zLabel.material = zLabelMat;
+
+            console.log("坐标轴标签已添加（红色，离坐标轴较远）");
+
+            console.log("=== 最小化飞机模型创建完成 ===");
+            console.log("共创建4个主要部件: fuselage, wingLeft, wingRight, engine×2, tailVertical");
+            console.log("现在请查看浏览器，并根据参考图片调整部件位置和大小");
+            console.log("");
+            console.log("坐标系说明：");
+            console.log("  红色X轴 → 右方");
+            console.log("  绿色Y轴 → 上方");
+            console.log("  蓝色Z轴 → 前方");
+
+
+            // ================================================================
+            // 3.10.10 导入专业级A350模型（暂时禁用 - 文件格式不兼容）
+            // ================================================================
+
+            // 注释掉以下代码，使用方案D的18个部件飞机
+            // 原因：下载的GLB文件Babylon.js无法解析
+            // 解决方案：暂时显示方案D飞机，以后可以更换其他格式的模型
+
+            console.log("使用方案D的18个部件飞机模型");
+            console.log("方案D架构：planeController(TransformNode) → fuselage(Cylinder) → 18个子部件");
+
+            // 保留 planeController，用于旋转方案D的飞机
+            // planeController.dispose() 已注释，保留方案D飞机
+            // planeController.dispose();
+
+            /*
+            // *** 以下代码暂时禁用（GLB文件格式不兼容）***
+
+            console.log("开始导入A350模型...");
+            console.log("模型路径: ./assets/a350-model.glb");
+
+            // 使用 AssetsManager 加载 GLB 文件（比 ImportMesh 更可靠）
+            const assetsManager = new BABYLON.AssetsManager(scene);
+
+            // 添加一个 GLB 任务
+            const modelTask = assetsManager.addMeshTask(
+                "a350-task",                         // 任务名称
+                "",                                  // 网格名称（空表示全部）
+                "./assets/",                         // 文件所在目录
+                "a350-model.glb"                     // 文件名
+            );
+
+            // 成功加载时的回调
+            modelTask.onSuccess = function(task) {
+                console.log("✅ A350专业模型导入成功！");
+                console.log("导入的网格部件数量：", task.loadedMeshes.length);
+
+                if (task.loadedMeshes.length > 0) {
+                    // 遍历所有导入的网格，打印信息
+                    for (let i = 0; i < task.loadedMeshes.length; i++) {
+                        const mesh = task.loadedMeshes[i];
+                        console.log("  网格 " + i + ": " + mesh.name);
+                    }
+
+                    // 创建一个容器节点，用于旋转
+                    const modelController = new BABYLON.TransformNode("modelController", scene);
+                    modelController.position = new BABYLON.Vector3(0, 2, 0);
+
+                    // 把导入的模型都设为modelController的子物体
+                    for (let mesh of task.loadedMeshes) {
+                        mesh.parent = modelController;
+                    }
+
+                    // 设置缩放
+                    modelController.scaling = new BABYLON.Vector3(0.02, 0.02, 0.02);
+
+                    console.log("✅ 模型已添加到场景中");
+                    console.log("模型控制器位置：", modelController.position);
+                    console.log("模型缩放：", modelController.scaling);
+                }
+            };
+
+            // 加载失败时的回调
+            modelTask.onError = function(task, message, exception) {
+                console.error("❌ 模型导入失败！");
+                console.error("任务名称：", task.name);
+                console.error("错误消息：", message);
+                if (exception) {
+                    console.error("异常信息：", exception);
+                }
+                console.error("检查路径：./assets/a350-model.glb");
+                console.error("完整路径应该是：C:\\Users\\Administrator\\Risen-work\\flight-simulator\\assets\\a350-model.glb");
+            };
+
+            // 启动加载
+            console.log("开始执行 AssetsManager 任务...");
+            assetsManager.load();
+            */
+
+            // ================================================================
+            // 3.10.9 返回场景对象
+            // ================================================================
+
+            // return：关键字，函数返回值
+            //   把场景对象返回给调用者
+            //   调用createScene()函数会得到这个scene对象
+            return scene;
+
+        }; // 函数定义结束
+
+        // ====================================================================
+        // 第4步：调用函数，创建场景
+        // ====================================================================
+
+        // createScene()：调用函数
+        //   函数名后面加()表示执行这个函数
+        //   这个函数会返回scene对象
+        // const scene = ...：把返回的scene对象赋值给变量scene
+        //   这样我们就可以在后面的代码中使用scene变量
+        const scene = createScene();
+
+        console.log("场景已创建并赋值:", scene);
+
+        // ====================================================================
+        // 第5步：启动渲染循环（让画面动起来）
+        // ====================================================================
+
+        // 什么是渲染循环？
+        // 渲染：把3D场景画到屏幕上
+        // 循环：不停重复执行
+        // 目的：持续更新画面，达到动画效果
+        //      就像电影是由每秒24帧画面组成的
+        //      游戏通常是每秒60帧
+
+        // ====================================================================
+        // 任务4新增：向量运算演示变量
+        // ====================================================================
+
+        // time：时间变量，用于动画
+        let time = 0;
+
+        // 获取HTML中的信息显示元素
+        const vectorInfoElement = document.getElementById("vectorInfo");
+        const rotationInfoElement = document.getElementById("rotationInfo");
+
+        // 获取任务4的物体
+        const box = scene.getMeshByName("box");
+        const sphereA = scene.getMeshByName("sphereA");
+        const sphereB = scene.getMeshByName("sphereB");
+        const sphereC = scene.getMeshByName("sphereC");
+        //   getMeshByName：通过名字获取网格
+        //   "box"：之前创建立方体时给的名字
+
+        // 获取任务5的物体
+        const spherePitch = scene.getMeshByName("spherePitch");
+        const sphereYaw = scene.getMeshByName("sphereYaw");
+        const sphereRoll = scene.getMeshByName("sphereRoll");
+        const rotationBox = scene.getMeshByName("rotationBox");
+
+        // 获取任务6的物体
+        const fuselage = scene.getMeshByName("fuselage");
+        //   getMeshByName：通过名字获取网格
+        //   "fuselage"：之前创建飞机机身时给的名字
+
+        // 获取planeController（TransformNode）
+        const planeController = scene.getTransformNodeByName("planeController");
+        //   getTransformNodeByName：通过名字获取变换节点
+        //   "planeController"：飞机的总控制器
+        //   这是Scheme D架构的核心：所有旋转都由planeController负责
+
+        // 获取HTML中的飞机信息显示元素
+        const planeInfoElement = document.getElementById("planeInfo");
+
+        // runRenderLoop：引擎的渲染循环方法
+        //   run = 运行，Render = 渲染，Loop = 循环
+        //
+        // 参数：一个函数
+        //   这个函数会被重复调用，通常每秒约60次
+        //   这里使用匿名函数（没有名字的函数）
+        engine.runRenderLoop(function() {
+            // 这里的代码会每帧执行一次
+
+            // ================================================================
+            // 增加时间变量（用于动画）
+            // ================================================================
+            time += 0.02;
+
+            // ================================================================
+            // 任务6：飞机旋转动画（支持导入模型和方案D）
+            // ================================================================
+
+            // 获取modelController（导入的模型控制器）
+            const modelController = scene.getTransformNodeByName("modelController");
+
+            // 如果导入了专业模型，旋转modelController
+            // 否则旋转planeController（方案D）
+            let activeController = modelController || planeController;
+
+            if (activeController) {
+                // 【暂时禁用旋转，方便调试飞机结构】
+                // 让飞机绕Y轴缓慢旋转
+                // activeController.rotation.y = time * 0.3;
+                //   time * 0.3：每帧增加0.3弧度
+                //   旋转速度：0.3 rad/帧 × 60帧/秒 = 18 rad/秒 ≈ 1080度/秒
+                //   缓慢旋转方便观察
+
+                // 可选：添加俯仰和滚转，让飞机做更复杂的动作
+                // activeController.rotation.x = Math.sin(time * 0.2) * Math.PI * 0.1;
+                //   X轴旋转（Pitch）：-18度 到 +18度
+                //   Math.sin产生周期性运动
+
+                // activeController.rotation.z = Math.cos(time * 0.3) * Math.PI * 0.05;
+                //   Z轴旋转（Roll）：-9度 到 +9度
+
+                // 获取飞机旋转角度（转换为度数）
+                const planeYaw = (activeController.rotation.y * 180 / Math.PI).toFixed(1);
+                const planePitch = (activeController.rotation.x * 180 / Math.PI).toFixed(1);
+                const planeRoll = (activeController.rotation.z * 180 / Math.PI).toFixed(1);
+
+                // 更新飞机信息显示
+                let planeInfo = "";
+                if (modelController) {
+                    planeInfo =
+                        "<b>✈️ 空客A350飞机（专业模型）：</b><br>" +
+                        "来源：Sketchfab<br>" +
+                        "高精度3D模型，所有细节逼真<br>" +
+                        "<small>" +
+                        "Pitch=" + planePitch + "° | " +
+                        "Yaw=" + planeYaw + "° | " +
+                        "Roll=" + planeRoll + "°" +
+                        "</small>";
+                } else {
+                    planeInfo =
+                        "<b>✈️ 空客A350飞机（方案D）：</b><br>" +
+                        "部件数量: 18个<br>" +
+                        "核心概念: TransformNode + Parenting<br>" +
+                        "比例：1:10缩放（真实66.8m → 6.7单位）<br>" +
+                        "<small>" +
+                        "Pitch=" + planePitch + "° | " +
+                        "Yaw=" + planeYaw + "° | " +
+                        "Roll=" + planeRoll + "°" +
+                        "</small>";
+                }
+
+                planeInfoElement.innerHTML = planeInfo;
+            }
+
+            // scene.render()：渲染场景
+            //   把3D场景画到canvas画布上
+            //   每调用一次，就画一帧
+            scene.render();
+        });
+
+        console.log("渲染循环已启动");
+        console.log("任务4：向量运算演示");
+        console.log("- 红球：向量A（会移动）");
+        console.log("- 绿球：向量B（固定）");
+        console.log("- 蓝球：A+B（向量加法结果）");
+        console.log("- 灰色立方体：在A和B之间来回移动（Lerp插值）");
+        console.log("");
+        console.log("任务5：旋转演示（欧拉角和四元数）");
+        console.log("- 橙色球：Pitch旋转（绕X轴，抬头/低头）");
+        console.log("- 黄绿色球：Yaw旋转（绕Y轴，左转/右转）");
+        console.log("- 紫色球：Roll旋转（绕Z轴，左倾/右倾）");
+        console.log("- 红色立方体：综合旋转（三个轴同时旋转）");
+        console.log("");
+        console.log("核心概念：欧拉角 vs 四元数");
+        console.log("- 欧拉角：rotation = Vector3(pitch, yaw, roll)");
+        console.log("- 四元数：rotationQuaternion = Quaternion(x, y, z, w)");
+        console.log("- 四元数优点：避免万向锁、平滑插值、高效计算");
+        console.log("");
+        console.log("任务6：空客A350飞机模型");
+        console.log("");
+        console.log("方案对比：");
+        console.log("✅ 方案D（手工拼接）：");
+        console.log("  - 18个基础形状部件组成");
+        console.log("  - TransformNode + Parenting架构");
+        console.log("  - 学习3D建模和架构设计");
+        console.log("  - 适合教学和理解原理");
+        console.log("");
+        console.log("✅ 专业模型（导入Sketchfab）：");
+        console.log("  - 从Sketchfab下载的高精度A350模型");
+        console.log("  - 包含所有细节（窗户、门、天线等）");
+        console.log("  - 视觉效果更逼真，更接近现实");
+        console.log("  - 适合实际应用和演示");
+
+        // ====================================================================
+        // 第6步：窗口大小改变时的处理
+        // ====================================================================
+
+        // 为什么需要这个？
+        // 当用户调整浏览器窗口大小时
+        // canvas需要重新调整，否则3D画面会变形或裁剪
+
+        // window：浏览器窗口对象
+        //   代表整个浏览器窗口
+        // addEventListener：添加事件监听器方法
+        //   add = 添加，Event = 事件，Listener = 监听器
+        //
+        // 参数：
+        //   第1个："resize" - 事件类型
+        //          resize = 调整大小
+        //          当窗口大小改变时触发
+        //   第2个：function() {...} - 事件处理函数
+        //          当事件发生时，执行这个函数
+        window.addEventListener("resize", function() {
+            // 当用户调整浏览器窗口大小时
+            // 这里的代码会执行
+
+            // engine.resize()：重新调整引擎的渲染大小
+            //   resize = 调整大小
+            //   让引擎适应新的窗口大小
+            engine.resize();
+
+            console.log("窗口大小已改变，引擎已调整");
+        });
+
+        // ====================================================================
+        // 代码结束
+        // ====================================================================
+
+        console.log("初始化完成！");
+        console.log("提示：按F12打开控制台查看更多信息");
+
+    </script>
+
+</body>
+<!-- <body>标签结束 -->
+
+</html>
+<!-- <html>标签结束，整个HTML文档结束 -->
